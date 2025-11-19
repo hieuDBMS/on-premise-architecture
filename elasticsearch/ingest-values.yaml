@@ -1,0 +1,81 @@
+clusterName: "elasticsearch"
+nodeGroup: "ingest"
+
+masterService: "elasticsearch-master"
+
+secret:
+  enabled: true
+  password: "123qwe!@#4"
+createCert: false  
+
+secretMounts:
+  - name: elasticsearch-master-certs
+    secretName: elasticsearch-master-certs
+    path: /usr/share/elasticsearch/config/master-certs
+    defaultMode: 0755
+
+protocol: https
+
+# Data Node - Storage and queries
+replicas: 1
+
+# Ingest node needs moderate resources
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "1"
+    memory: "1.5Gi"
+
+# Ingest node doesn't need persistent storage
+persistence:
+  enabled: false
+
+# Java heap size
+esJavaOpts: "-Xmx1000m -Xms1000m"
+
+# Ingest-only role
+roles:
+  - ingest
+
+# Node selector to pin to specific worker node (optional)
+nodeSelector:
+  node-role: ingest-es  # You'll need to label your node
+
+# Service
+service:
+  type: ClusterIP
+
+# Elasticsearch configuration
+esConfig:
+  elasticsearch.yml: |
+    network.host: 0.0.0.0
+    node.name: ${HOSTNAME}
+    node.roles: [ ingest ]
+
+    xpack.security.http.ssl.enabled: true
+    xpack.security.http.ssl.key: /usr/share/elasticsearch/config/master-certs/tls.key
+    xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/master-certs/tls.crt
+    xpack.security.http.ssl.certificate_authorities: ["/usr/share/elasticsearch/config/master-certs/ca.crt"]
+
+    xpack.security.transport.ssl.enabled: true
+    xpack.security.transport.ssl.verification_mode: certificate
+    xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/master-certs/tls.key
+    xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/master-certs/tls.crt
+    xpack.security.transport.ssl.certificate_authorities: [ "/usr/share/elasticsearch/config/master-certs/ca.crt" ]
+    
+
+    # Discovery - connect to master
+    discovery.seed_hosts:
+      - elasticsearch-master
+
+# Health checks
+readinessProbe:
+  failureThreshold: 3
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  successThreshold: 3
+  timeoutSeconds: 10
+
+clusterHealthCheckParams: "wait_for_status=green&timeout=10s"

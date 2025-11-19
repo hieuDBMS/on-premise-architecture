@@ -1,0 +1,68 @@
+clusterName: "elasticsearch"
+nodeGroup: "master"
+
+# CRITICAL: Force disable security at chart level
+secret:
+  enabled: true
+  password: "123qwe!@#4"
+createCert: true
+
+protocol: https
+
+# Master Node - Cluster coordination only
+replicas: 1
+
+# Master node needs less resources
+resources:
+  requests:
+    cpu: "250m"
+    memory: "1Gi"
+  limits:
+    cpu: "500m"
+    memory: "2Gi"
+
+# Master doesn't need persistent storage
+persistence:
+  enabled: false
+
+# Java heap size
+esJavaOpts: "-Xmx1g -Xms1g"
+
+# Master-only role
+roles:
+  - master
+
+# Node selector to pin to specific worker node (optional)
+# nodeSelector:
+#   node-role: master-es  # You'll need to label your node
+
+# Service
+service:
+  type: ClusterIP
+
+# Elasticsearch configuration
+esConfig:
+  elasticsearch.yml: |
+    network.host: 0.0.0.0
+    node.name: ${HOSTNAME}
+    node.roles: [ master ]
+    xpack.security.http.ssl.enabled: true
+    xpack.security.transport.ssl.enabled: true
+    # Initial master node
+    cluster.initial_master_nodes:
+      - elasticsearch-master-0
+    # Discovery
+    discovery.seed_hosts:
+      - elasticsearch-master-headless
+      - elasticsearch-data-headless
+      - elasticsearch-ingest-headless
+
+# Health checks
+readinessProbe:
+  failureThreshold: 3
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  successThreshold: 3
+  timeoutSeconds: 10
+
+clusterHealthCheckParams: "wait_for_status=green&timeout=10s"

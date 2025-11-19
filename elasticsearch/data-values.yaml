@@ -1,0 +1,88 @@
+clusterName: "elasticsearch"
+nodeGroup: "data"
+
+masterService: "elasticsearch-master"
+
+secret:
+  enabled: true
+  password: "123qwe!@#4"
+createCert: false
+
+secretMounts:
+  - name: elasticsearch-master-certs
+    secretName: elasticsearch-master-certs
+    path: /usr/share/elasticsearch/config/master-certs
+    defaultMode: 0755
+
+protocol: https
+
+# Data Node - Storage and queries
+replicas: 3
+
+# Data node needs more resources
+resources:
+  requests:
+    cpu: "1000m"
+    memory: "1.5Gi"
+  limits:
+    cpu: "2000m"
+    memory: "3Gi"
+
+# Data node NEEDS persistent storage
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: "es-storage"
+  resources:
+    requests:
+      storage: 20Gi
+
+persistence:
+  enabled: true
+
+# Java heap size
+esJavaOpts: "-Xmx1g -Xms1g"
+
+# Data-only role
+roles:
+  - data
+
+# Node selector to pin to specific worker node (optional)
+nodeSelector:
+  node-role: data-es  # You'll need to label your node
+
+# Service
+service:
+  type: ClusterIP
+
+# Elasticsearch configuration
+esConfig:
+  elasticsearch.yml: |
+    network.host: 0.0.0.0
+    node.name: ${HOSTNAME}
+    node.roles: [ data ]
+    
+    xpack.security.http.ssl.enabled: true
+    xpack.security.http.ssl.key: /usr/share/elasticsearch/config/master-certs/tls.key
+    xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/master-certs/tls.crt
+    xpack.security.http.ssl.certificate_authorities: ["/usr/share/elasticsearch/config/master-certs/ca.crt"]
+
+    xpack.security.transport.ssl.enabled: true
+    xpack.security.transport.ssl.verification_mode: certificate
+    xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/master-certs/tls.key
+    xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/master-certs/tls.crt
+    xpack.security.transport.ssl.certificate_authorities: [ "/usr/share/elasticsearch/config/master-certs/ca.crt" ]
+    
+    # Discovery - connect to master
+    discovery.seed_hosts:
+      - elasticsearch-master
+        
+
+# Health checks
+readinessProbe:
+  failureThreshold: 3
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  successThreshold: 3
+  timeoutSeconds: 10
+
+clusterHealthCheckParams: "wait_for_status=green&timeout=10s"

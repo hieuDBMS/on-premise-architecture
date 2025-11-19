@@ -1,0 +1,6 @@
+Install the Fluent-Bit using helm chart
+helm repo add fluent https://fluent.github.io/helm-charts
+helm repo update
+helm search repo fluent
+sudo vi fluent-bit-values.yaml -> create values file
+helm upgrade --install fluent-bit fluent/fluent-bit   --namespace fluent-bit --create-namespace   -f fluent-bit-values.yaml

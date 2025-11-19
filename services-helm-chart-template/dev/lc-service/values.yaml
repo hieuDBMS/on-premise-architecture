@@ -1,0 +1,105 @@
+nameOverride: "interpay-lc-service-dev"
+fullnameOverride: "interpay-lc-service-dev"
+image:
+  repository: "registry.bbtech.io.vn/nwf/dev/interpay.lc-service"
+  tag: 70-4f4f436
+  pullPolicy: IfNotPresent
+  pullSecrets:
+    - name: harbor-bbtech-registry-secret
+
+replicaCount: 1
+namespace: "interpay-dev"
+service:
+  port: 80
+  targetPort: 8080
+serviceAccount:
+  create: true
+  name: "interpay-lc-service"
+  annotations: {}
+
+livenessProbe:
+  httpGet:
+    path: /api/lc-service/actuator/health
+    port: 8080
+  initialDelaySeconds: 100
+  timeoutSeconds: 10
+  periodSeconds: 10
+  failureThreshold: 5
+readinessProbe:
+  httpGet:
+    path: /api/lc-service/actuator/health
+    port: 8080
+  initialDelaySeconds: 100
+  timeoutSeconds: 10
+  periodSeconds: 10
+  failureThreshold: 5
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/auth-url: "http://interpay-auth-service-dev.interpay-dev.svc.cluster.local/api/auth-service/v1/auth/verify-token"
+    nginx.ingress.kubernetes.io/auth-method: "GET"
+  hosts:
+    - host: interpay-dev.bbtech.io.vn
+      paths:
+        - path: /api/lc-service
+          pathType: Prefix
+
+# Setting environment variables
+# Setting environment variables
+envs:
+  # Application variables
+  - name: YOUR_NAME
+    value: "YOUR_VALUE"
+
+
+# Setting environment variables from secrets
+envSecrets:
+  - name: YOUR_NAME
+    valueFrom:
+      secretKeyRef:
+        name: YOUR_SECRET_NAME
+        key: YOUR_SECRET_KEY
+
+serviceMonitor:
+  enabled: true
+  # additionalLabels:
+  #   prometheus-release: prom1
+  interval: "30s"
+  relabelings: []
+  path: "/api/lc-service/actuator/prometheus"
+  scheme: "http"
+  scrapeTimeout: "5s"
+  tlsConfig: {}
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 500Mi
+  limits:
+    cpu: 1
+    memory: 1536Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+volumeMounts:
+  - name: hds
+    mountPath: /keystore/hds
+    readOnly: true
+  - name: fx
+    mountPath: /keystore/fx
+    readOnly: true
+
+volumes:
+  - name: hds
+    secret:
+      secretName: interpay-lc-service-hds-secret
+  - name: fx
+    secret:
+      secretName: interpay-lc-service-fx-secret

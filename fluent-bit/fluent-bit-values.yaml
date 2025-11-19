@@ -1,0 +1,112 @@
+luaScripts:
+  remove_color.lua: |
+    function remove_ansi_codes(tag, timestamp, record)
+        local log = record["log"]
+        
+        if log and type(log) == "string" then
+            -- Remove ANSI codes
+            local cleaned = log:gsub("\27%[[0-9;]*m", "")
+            
+            -- Parse the cleaned log with regex
+            local pattern = "^([%d%-: %.]+)%[(.-)%]%[TraceId:(.-)%]%[SpanId:(.-)%]%[X%-Request%-Id:(.-)%]%[userId:(.-)%]%s+([A-Z]+)%[(.-)%]([^%s]+)%s+([^%s]+)%s*:(.*)$"
+            
+            local timestamp_str, service, trace_id, span_id, request_id, user_id, level, thread, logger, method, message = cleaned:match(pattern)
+            
+            if timestamp_str then
+                -- Successfully parsed, add fields to record
+                record["timestamp"] = timestamp_str
+                record["service"] = service
+                record["trace_id"] = trace_id
+                record["span_id"] = span_id
+                record["request_id"] = request_id
+                record["user_id"] = user_id
+                record["level"] = level
+                record["thread"] = thread
+                record["logger"] = logger
+                record["method"] = method
+                record["message"] = message
+                record["log"] = cleaned  -- Keep cleaned log
+            else
+                -- Pattern didn't match, just keep cleaned log
+                record["log"] = cleaned
+            end
+        end
+        
+        return 1, timestamp, record
+    end
+
+config:
+  inputs: |
+    [INPUT]
+        Name tail
+        Path /var/log/containers/*.log
+        Exclude_Path /var/log/containers/*prometheus*.log,/var/log/containers/*ingress*.log,/var/log/containers/*cattle*.log,/var/log/containers/*calico*.log
+        multiline.parser docker, cri
+        Tag kube.*
+        Mem_Buf_Limit 5MB
+        Skip_Long_Lines On
+        Refresh_Interval 10
+
+    [INPUT]
+        Name systemd
+        Tag host.home.*
+        Systemd_Filter _SYSTEMD_UNIT=kubelet.service
+        Read_From_Tail ON
+
+  filters: |
+    [FILTER]
+        Name kubernetes
+        Match kube.*
+        Merge_Log Off
+        Keep_Log On
+        K8S-Logging.Parser On
+        K8S-Logging.Exclude On
+
+    [FILTER]
+        Name    lua
+        Match   kube.*
+        script  /fluent-bit/scripts/remove_color.lua
+        call    remove_ansi_codes
+
+
+  outputs: |
+    [OUTPUT]
+        Name es
+        Match kube.*
+        Host es.bbtech.io.vn
+        Port 443
+        HTTP_User fluent-bit
+        HTTP_Passwd 123qwe!@#4
+        Index k8s-logs-home
+        Retry_Limit 5
+        Suppress_Type_Name On
+        Trace_Error On
+        tls On
+        Buffer_Size 100KB
+
+    [OUTPUT]
+        Name es
+        Match host.home.*
+        Host es.bbtech.io.vn
+        Port 443
+        HTTP_User fluent-bit
+        HTTP_Passwd 123qwe!@#4
+        Index k8s-logs-home
+        Retry_Limit 5
+        Suppress_Type_Name On
+        Trace_Error On
+        tls On
+        Buffer_Size 100KB
+
+  customParsers: |
+    [PARSER]
+        Name   log-parser
+        Format regex
+        Regex  ^(?<timestamp>[\d\-: \.]+)\[(?<service>.*?)\]\[TraceId:(?<trace_id>.*?)\]\[SpanId:(?<span_id>.*?)\]\[X-Request-Id:(?<request_id>.*?)\]\[userId:(?<user_id>.*?)\]\s+(?<level>[A-Z]+)\[(?<thread>.*?)\](?<logger>[^\s]+)\s+(?<method>[^\s]+)\s*:(?<message>.*)$
+        Time_Key    timestamp
+        Time_Format %Y-%m-%d %H:%M:%S.%L
+
+    [PARSER]
+        Name   remove-ansi
+        Format regex
+        Regex  ^(?:\\u001b\[[0-9;]*m)*(?<log>.*)$

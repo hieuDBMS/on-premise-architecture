@@ -1,0 +1,95 @@
+nameOverride: "interpay-webapp-dev"
+fullnameOverride: "interpay-webapp-dev"
+image:
+  repository: "registry.bbtech.io.vn/nwf/dev/interpay.webapp"
+  tag: 157-2889af4
+  pullPolicy: IfNotPresent
+  pullSecrets:
+    - name: harbor-bbtech-registry-secret
+
+replicaCount: 1
+namespace: "interpay-dev"
+service:
+  port: 80
+  targetPort: 80
+serviceAccount:
+  create: true
+  name: "interpay-webapp"
+  annotations: {}
+
+livenessProbe:
+  httpGet:
+    path: /index.html
+    port: 80
+  initialDelaySeconds: 5
+  timeoutSeconds: 10
+  periodSeconds: 10
+  failureThreshold: 3
+readinessProbe:
+  httpGet:
+    path: /index.html
+    port: 80
+  initialDelaySeconds: 5
+  timeoutSeconds: 10
+  periodSeconds: 10
+  failureThreshold: 3
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: interpay-dev.bbtech.io.vn
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Setting environment variables
+envs:
+  # Application variables
+  - name: APP_PORT
+    value: "80"
+  - name: AUTH_SERVICE
+    value: "/api/auth-service"
+  - name: FEE_SERVICE
+    value: "/api/fee-service"
+  - name: LC_SERVICE
+    value: "/api/lc-service"
+  - name: APP_VERSION
+    value: "157-2889af4"
+  - name: BUILD_TIME
+    value: "2025-10-29T10:05:07"
+
+# Setting environment variables from secrets
+envSecrets: {}
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 500Mi
+  limits:
+    cpu: 1
+    memory: 1536Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+volumeMounts:
+  - name: hds
+    mountPath: /keystore/hds
+    readOnly: true
+  - name: fx
+    mountPath: /keystore/fx
+    readOnly: true
+
+volumes:
+  - name: hds
+    secret:
+      secretName: interpay-lc-service-hds-secret
+  - name: fx
+    secret:
+      secretName: interpay-lc-service-fx-secret

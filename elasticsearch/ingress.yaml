@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: es-master-ingress
+  namespace: elastic
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: es.bbtech.io.vn   # DNS reachable from Fluent Bit cluster
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: elasticsearch-data
+            port:
+              number: 9200
+  tls:
+    - hosts:
+        - es.bbtech.io.vn
+      secretName: bbtech-tls

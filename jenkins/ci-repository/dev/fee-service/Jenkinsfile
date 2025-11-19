@@ -1,0 +1,34 @@
+@Library('jenkins-interpay-lib-main')_
+import pipeline.be.*
+
+def bePipeline
+
+pipeline {
+    agent any
+
+    environment {
+        SOURCE_URL = 'url-to-your-service-repository'
+        ARGO_REPO_URL = 'url-to-your-cd-repository'
+        DEPLOY_ENV = 'dev'
+        APP_NAME = 'interpay'
+        SERVICE_NAME = 'fee-service'
+        TIMEZONE = 'Asia/Ho_Chi_Minh'
+    }
+
+    stages {
+        stage('Run Backend Pipeline') {
+            steps {
+                script {
+                    bePipeline = new BePipeline(this)
+                    bePipeline.run("${SOURCE_URL}", "${ARGO_REPO_URL}", "${DEPLOY_ENV}", "${APP_NAME}", "${SERVICE_NAME}", "${TIMEZONE}")
+                }
+            }
+        }
+
+        stage('Clean Up Workspace') {
+            steps {
+                deleteDir()
+            }
+        }
+    }
+}
