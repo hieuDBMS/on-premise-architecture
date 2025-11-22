@@ -48,7 +48,7 @@ roles:
 
 # Node selector to pin to specific worker node (optional)
 nodeSelector:
-  node-role: data-es  # You'll need to label your node
+  elastic-data: "true" # You'll need to label your node
 
 # Service
 service:

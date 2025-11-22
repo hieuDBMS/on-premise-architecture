@@ -7,8 +7,6 @@ To make it easy for you to get started with this project, here's a list of recom
 # Contents
 - [Dependencies](#dependencies)
 - [Installation](#installation)
-- [Node Exporter](#node-exporter)
-- [Federate](#federate)
 
 ## Dependencies
 ### Make sure to install [Tailscale](https://tailscale.com/download) on all VM (Machine)
@@ -20,7 +18,7 @@ Tailscale will make your IP permanently event if you restart the machine.
 
 ## Installation
 
-There are 4 steps to set up Cluster Elasticsearch.
+There are 7 steps to set up Cluster Elasticsearch.
 
 1. Set up Kibana with Elastic :
     - elasticsearchHosts : 
@@ -60,3 +58,58 @@ There are 4 steps to set up Cluster Elasticsearch.
         - kibana.bbtech.io.vn
     ```
 4. Feel Free to update the readinessProbe
+
+5. Install Kibana
+    ```
+    helm install kibana elastic/kibana -f kibana-values.yaml -n elastic
+    ```
+    
+6. Create user and role fluent-bit for sending logs. Make sure to change password
+    ![alt text](image.png)
+
+    ![alt text](image-1.png)
+
+7. Create Log Rotation for each index
+- Navigate to Dev-Tool of Kibana
+    ```
+    PUT _ilm/policy/k8s-log-delete-policy
+    {
+        "policy": {
+            "phases": {
+            "hot": {
+                "actions": {}
+            },
+            "delete": {
+                "min_age": "7d",
+                "actions": {
+                "delete": {}
+                }
+            }
+            }
+        }
+    }
+    
+    # Used this if index does not exist
+    PUT _index_template/k8s-log-template
+    {
+        "index_patterns": ["k8s-log-*"],
+        "template": {
+            "settings": {
+            "index.lifecycle.name": "k8s-log-delete-policy"
+            }
+        }
+    }
+
+    # Use This if index exists
+    PUT <your_index>/_settings
+    {
+        "settings": {
+            "index.lifecycle.name": "k8s-log-delete-policy"
+        }
+    }
+    ```
+
+- Check if the index.lifecycle.name is set up
+    ```
+    GET k8s-logs-*/_settings?pretty
+    ```

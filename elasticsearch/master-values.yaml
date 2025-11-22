@@ -21,9 +21,17 @@ resources:
     cpu: "500m"
     memory: "2Gi"
 
+# Data node NEEDS persistent storage
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: "es-storage"
+  resources:
+    requests:
+      storage: 5Gi
+
 # Master doesn't need persistent storage
 persistence:
-  enabled: false
+  enabled: true
 
 # Java heap size
 esJavaOpts: "-Xmx1g -Xms1g"
@@ -33,8 +41,8 @@ roles:
   - master
 
 # Node selector to pin to specific worker node (optional)
-# nodeSelector:
-#   node-role: master-es  # You'll need to label your node
+nodeSelector:
+  elastic-master: "true"  # You'll need to label your node
 
 # Service
 service:

@@ -26,10 +26,10 @@ spec:
     required:
       nodeSelectorTerms:
       - matchExpressions:
-        - key: node-role
+        - key: elastic-data
           operator: In
           values:
-          - data-es  # Must match the node label
+          - "true"  # Must match the node label
 ---
 # PersistentVolume for Worker Data 2
 apiVersion: v1
@@ -50,10 +50,10 @@ spec:
     required:
       nodeSelectorTerms:
       - matchExpressions:
-        - key: node-role
+        - key: elastic-data
           operator: In
           values:
-          - data-es  # Must match the node label
+          - "true"  # Must match the node label
 ---
 # PersistentVolume for Worker Data 3
 apiVersion: v1
@@ -74,7 +74,55 @@ spec:
     required:
       nodeSelectorTerms:
       - matchExpressions:
-        - key: node-role
+        - key: elastic-data
           operator: In
           values:
-          - data-es  # Must match the node label
+          - "true"  # Must match the node label
+---
+# PV for Ingest 1
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: es-ingest-pv-1
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: es-storage
+  local:
+    path: /data/elasticsearch/es-ingest-pv
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: elastic-ingest
+          operator: In
+          values:
+            - "true"
+---
+# PV for Master 1
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: es-master-pv-1
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: es-storage
+  local:
+    path: /data/elasticsearch/es-master-pv
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: elastic-master
+          operator: In
+          values:
+            - "true"
